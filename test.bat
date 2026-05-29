@@ -1,1 +1,0 @@
-ribbons.scr /65552
