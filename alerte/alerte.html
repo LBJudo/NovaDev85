@@ -1,1 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Buzzer Tactique - Sélecteur</title>
+    <style>
+        body { background-color: #1a1a1a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; transition: background 0.2s; }
+        .container { display: flex; gap: 40px; align-items: center; max-width: 900px; margin-top: 20px; }
 
+        /* Grille des 10 sélecteurs */
+        .sidebar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .small-btn { 
+            width: 120px; height: 50px; border: 2px solid rgba(255,255,255,0.1); border-radius: 8px; 
+            cursor: pointer; font-weight: bold; color: white; font-size: 11px; transition: 0.2s;
+        }
+        .small-btn:hover { border-color: white; transform: scale(1.05); }
+
+        /* Le Bouton Central (Le déclencheur) */
+        .main-zone { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .btn-principal { 
+            background: #444; width: 250px; height: 250px; border-radius: 50%;
+            border: 8px solid #666; color: white; font-size: 20px; font-weight: bold;
+            cursor: pointer; box-shadow: 0 10px #222; text-transform: uppercase;
+            display: flex; align-items: center; justify-content: center; text-align: center;
+        }
+        .btn-principal.active { background: #3498db; border-color: white; box-shadow: 0 10px #21618c; }
+        .btn-principal.alerte-mode { background: #ff0000; border-color: white; box-shadow: 0 10px #800000; font-size: 24px; }
+        .btn-principal:active { transform: translateY(8px); box-shadow: 0 2px #222; }
+
+        /* Bouton Spécial Dernier Recours */
+        .btn-reset-alerte {
+            background: #e74c3c; padding: 10px 20px; border: none; border-radius: 50px;
+            color: white; font-weight: bold; cursor: pointer; text-transform: uppercase;
+        }
+
+        .import-zone { 
+            background: #2c3e50; padding: 15px; border-radius: 12px; 
+            margin-bottom: 20px; border: 2px dashed #3498db; width: 100%; max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚨 CONSOLE MULTI-BUZZER 🚨</h1>
+
+    <div class="import-zone">
+        <label style="cursor:pointer;">
+            <strong>📁 CHARGER "ALERTE TROP DE BRUIS.MP3"</strong>
+            <input type="file" id="upload" accept="audio/*" style="display:none">
+        </label>
+        <div id="status" style="margin-top:5px; font-size: 12px; color:#bbb;">(Nécessaire pour le mode Dernier Recours)</div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <button class="small-btn" style="background:#2ecc71" onclick="configurerBouton(400, 'sine', 'BIP VERT')">PRÉPARER 1</button>
+            <button class="small-btn" style="background:#27ae60" onclick="configurerBouton(450, 'sine', 'BIP FORÊT')">PRÉPARER 2</button>
+            <button class="small-btn" style="background:#3498db" onclick="configurerBouton(500, 'triangle', 'BIP BLEU')">PRÉPARER 3</button>
+            <button class="small-btn" style="background:#2980b9" onclick="configurerBouton(550, 'triangle', 'BIP MER')">PRÉPARER 4</button>
+            <button class="small-btn" style="background:#9b59b6" onclick="configurerBouton(600, 'square', 'ROBOT 1')">PRÉPARER 5</button>
+            <button class="small-btn" style="background:#8e44ad" onclick="configurerBouton(650, 'square', 'ROBOT 2')">PRÉPARER 6</button>
+            <button class="small-btn" style="background:#f1c40f; color:black" onclick="configurerBouton(700, 'sawtooth', 'LASER 1')">PRÉPARER 7</button>
+            <button class="small-btn" style="background:#f39c12" onclick="configurerBouton(750, 'sawtooth', 'LASER 2')">PRÉPARER 8</button>
+            <button class="small-btn" style="background:#e67e22" onclick="configurerBouton(800, 'sine', 'ALERTE 9')">PRÉPARER 9</button>
+            <button class="small-btn" style="background:#d35400" onclick="configurerBouton(850, 'sine', 'ALERTE 10')">PRÉPARER 10</button>
+        </div>
+
+        <div class="main-zone">
+            <button id="gros-btn" class="btn-principal" onclick="declencher()">CHOISISSEZ<br>UN SON</button>
+            
+            <button class="btn-reset-alerte" onclick="activerDernierRecours()">☢️ MODE DERNIER RECOURS</button>
+        </div>
+    </div>
+
+    <script>
+        let alerteAudio = null;
+        let modeActuel = "attente"; // "attente", "bip", "alerte"
+        let configBip = { freq: 440, type: 'sine', label: "" };
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // 1. Importation du MP3 (Alerte trop de bruis.mp3)
+        document.getElementById('upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                alerteAudio = new Audio(URL.createObjectURL(file));
+                document.getElementById('status').innerText = "✅ MP3 chargé ! Prêt pour le Dernier Recours.";
+                document.getElementById('status').style.color = "#2ecc71";
+            }
+        });
+
+        // 2. Sélectionner un des 10 sons (Change le bouton du milieu)
+        function configurerBouton(freq, type, label) {
+            modeActuel = "bip";
+            configBip = { freq, type, label };
+            const btn = document.getElementById('gros-btn');
+            btn.className = "btn-principal active";
+            btn.innerHTML = "LANCER :<br>" + label;
+        }
+
+        // 3. Revenir au mode "Dernier Recours" (MP3)
+        function activerDernierRecours() {
+            if (!alerteAudio) {
+                alert("Charge d'abord 'alerte trop de bruis.mp3' en haut !");
+                return;
+            }
+            modeActuel = "alerte";
+            const btn = document.getElementById('gros-btn');
+            btn.className = "btn-principal alerte-mode";
+            btn.innerHTML = "ALERTE<br>MAXIMALE";
+        }
+
+        // 4. L'action quand on clique sur le gros bouton
+        function declencher() {
+            if (modeActuel === "attente") {
+                alert("Cliquez sur un bouton à gauche ou sur le mode Dernier Recours !");
+            } 
+            else if (modeActuel === "bip") {
+                jouer5s(configBip.freq, configBip.type);
+            } 
+            else if (modeActuel === "alerte") {
+                alerteAudio.currentTime = 0;
+                alerteAudio.play();
+                lancerFlash(5000);
+            }
+        }
+
+        // Fonctions Audio
+        function jouer5s(freq, type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            for (let i = 0; i < 10; i++) {
+                let t = audioCtx.currentTime + (i * 0.5);
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = type;
+                o.frequency.setValueAtTime(freq, t);
+                g.gain.setValueAtTime(0.2, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(t); o.stop(t + 0.4);
+            }
+        }
+
+        function lancerFlash(duree) {
+            let flash = setInterval(() => {
+                document.body.style.backgroundColor = document.body.style.backgroundColor === 'red' ? '#1a1a1a' : 'red';
+            }, 200);
+            setTimeout(() => { clearInterval(flash); document.body.style.backgroundColor = '#1a1a1a'; }, duree);
+        }
+    </script>
+</body>
+</html>
